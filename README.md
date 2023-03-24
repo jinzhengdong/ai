@@ -38,6 +38,116 @@ XHEDU应用系统的特点主要有以下几点：
 4. MyBatis Plus with Lombok：MyBatis Plus是一款强大的ORM框架，结合Lombok可以大幅度减少Java开发中的重复代码，提高代码质量和开发效率。
 5. LayUI：LayUI是一款简洁易用的前端UI框架，具有美观的样式和丰富的组件，可以快速实现各种页面效果。
 
-综上所述，XHEDU应用系统的构架具有较高的灵活性、可扩展性和易维护性，适用于大多数学校的绩效管理需求。
+总之，XHEDU应用系统的构架具有较高的灵活性、可扩展性和易维护性，适用于大多数学校的绩效管理需求。
+
+#### 数据设计
+
+##### 用户系统
+
+```sql
+-- 用户表
+CREATE TABLE dbo.Users (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    Username VARCHAR(50) NOT NULL,
+    Password VARCHAR(40) NOT NULL,
+);
+
+CREATE UNIQUE INDEX UQ_USERS_USERNAME ON USERS (USERNAME);
+
+-- 用户组表
+CREATE TABLE dbo.UserGroups (
+    GroupID INT IDENTITY(1,1) PRIMARY KEY,
+    GroupName VARCHAR(50) NOT NULL
+);
+
+CREATE UNIQUE INDEX UQ_USERGROUPS_GROUPNAME ON USERGROUPS (GROUPNAME);
+
+-- 用户和用户组关联表
+CREATE TABLE dbo.UserGroupMembership (
+    ID INT IDENTITY(1, 1) PRIMARY KEY NOT NULL,
+    UserID INT NOT NULL,
+    GroupID INT NOT NULL,
+    CONSTRAINT FK_UserGroupMembership_UserID FOREIGN KEY (UserID) REFERENCES dbo.Users (UserID),
+    CONSTRAINT FK_UserGroupMembership_GroupID FOREIGN KEY (GroupID) REFERENCES dbo.UserGroups (GroupID)
+);
+
+CREATE UNIQUE INDEX UQ_USERGROUPMEMBERSHIP_USERID_GROUPID ON USERGROUPMEMBERSHIP (USERID, GROUPID);
+
+-- 权限表
+CREATE TABLE dbo.Permissions (
+    PermissionID INT IDENTITY(1,1) PRIMARY KEY,
+    PermissionName VARCHAR(50) NOT NULL
+);
+
+CREATE UNIQUE INDEX UQ_PERMISSIONS_PERMISSIONNAME ON PERMISSIONS (PERMISSIONNAME);
+
+-- 用户组和权限关联表
+CREATE TABLE dbo.GroupPermissions (
+  
+    GroupID INT NOT NULL,
+    PermissionID INT NOT NULL,
+    CONSTRAINT PK_GroupPermissions PRIMARY KEY (GroupID, PermissionID),
+    CONSTRAINT FK_GroupPermissions_GroupID FOREIGN KEY (GroupID) REFERENCES dbo.UserGroups (GroupID),
+    CONSTRAINT FK_GroupPermissions_PermissionID FOREIGN KEY (PermissionID) REFERENCES dbo.Permissions (PermissionID)
+);
+
+-- 用户和权限关联表
+CREATE TABLE dbo.UserPermissions (
+    UserID INT NOT NULL,
+    PermissionID INT NOT NULL,
+    CONSTRAINT PK_UserPermissions PRIMARY KEY (UserID, PermissionID),
+    CONSTRAINT FK_UserPermissions_UserID FOREIGN KEY (UserID) REFERENCES dbo.Users (UserID),
+    CONSTRAINT FK_UserPermissions_PermissionID FOREIGN KEY (PermissionID) REFERENCES dbo.Permissions (PermissionID)
+);
+
+-- 用户认证存储过程
+CREATE PROCEDURE dbo.AuthenticateUser
+    @Username VARCHAR(50),
+    @Password VARBINARY(256),
+    @UserID INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+ 
+    SELECT @UserID = UserID
+    FROM dbo.Users
+    WHERE Username = @Username AND PasswordHash = HASHBYTES('SHA2_256', @Password + CAST(Salt AS VARBINARY(256)));
+END;
+
+-- 用户授权存储过程
+CREATE PROCEDURE dbo.AuthorizeUser
+    @UserID INT,
+    @PermissionName VARCHAR(50),
+    @IsAuthorized BIT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+ 
+    SELECT @IsAuthorized = CASE 
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.UserPermissions
+            WHERE UserID = @UserID AND PermissionID = (
+                SELECT PermissionID
+                FROM dbo.Permissions
+                WHERE PermissionName = @PermissionName
+            )
+        ) THEN 1
+        ELSE CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM dbo.UserGroupMembership ugm
+                INNER JOIN dbo.GroupPermissions gp ON ugm.GroupID = gp.GroupID
+                WHERE ugm.UserID = @UserID AND gp.PermissionID = (
+                    SELECT PermissionID
+                    FROM dbo.Permissions
+                    WHERE PermissionName = @PermissionName
+                )
+            ) THEN 1
+            ELSE 0
+        END
+    END;
+END;
+```
 
 ## Bard
