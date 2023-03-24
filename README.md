@@ -4,11 +4,6 @@
 
 ### XHEDU
 
-XHEDU is a web based application used for school management. There is a MS SQL Database called xhedu on localhost:1433.
-
-The first step, please generate ddl scripts for the application users management, users in in the application include:
-
-* admin
-* general users, teachers.
+XHEDU是一款绩效管理系统，旨在帮助学校管理用户、教师、教室、课程、岗位和职称等信息，以及简化教师上课签到的流程。该系统提供了多种功能模块，可以根据学校的实际需求进行选择和配置，以实现定制化管理。用户可以通过XHEDU进行信息的录入、查询、修改、删除等操作，从而实现对学校各项管理工作的高效、精准、便捷管理。无论是教务管理人员还是教师，都可以通过XHEDU轻松地管理学校的各项事务，从而提升学校管理的水平和效率。
 
 ## Bard
